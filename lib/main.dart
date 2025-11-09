@@ -19,10 +19,16 @@ class _FlutterThemeMakerAppState extends State<FlutterThemeMakerApp> {
   bool _isDarkMode = false;
 
   ThemeData _buildTheme() {
-    final colorScheme = ColorScheme.fromSeed(
+    // Elsődleges szín alapján generálunk color scheme-et
+    final baseScheme = ColorScheme.fromSeed(
       seedColor: _primaryColor,
-      secondary: _secondaryColor,
       brightness: _isDarkMode ? Brightness.dark : Brightness.light,
+    );
+
+    // Másodlagos színt explicit beállítjuk
+    final colorScheme = baseScheme.copyWith(
+      secondary: _secondaryColor,
+      onSecondary: _secondaryColor.computeLuminance() > 0.5 ? Colors.black : Colors.white,
     );
 
     return ThemeData(
@@ -74,33 +80,13 @@ class ThemeMakerScreen extends StatelessWidget {
     ValueChanged<Color> onColorChanged,
     String title,
   ) {
-    Color pickerColor = currentColor;
-
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(title),
-          content: SingleChildScrollView(
-            child: ColorPicker(
-              pickerColor: pickerColor,
-              onColorChanged: (color) => pickerColor = color,
-              pickerAreaHeightPercent: 0.8,
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Mégse'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                onColorChanged(pickerColor);
-                Navigator.of(context).pop();
-              },
-              child: const Text('Kiválaszt'),
-            ),
-          ],
+        return ColorPickerDialog(
+          initialColor: currentColor,
+          title: title,
+          onColorSelected: onColorChanged,
         );
       },
     );
@@ -112,12 +98,18 @@ class ThemeMakerScreen extends StatelessWidget {
 
     return '''
 // Generált Flutter ThemeData
+final baseScheme = ColorScheme.fromSeed(
+  seedColor: Color(0x${primaryColor.value.toRadixString(16).padLeft(8, '0')}),
+  brightness: Brightness.${isDarkMode ? 'dark' : 'light'},
+);
+
+final colorScheme = baseScheme.copyWith(
+  secondary: Color(0x${secondaryColor.value.toRadixString(16).padLeft(8, '0')}),
+  onSecondary: ${secondaryColor.computeLuminance() > 0.5 ? 'Colors.black' : 'Colors.white'},
+);
+
 ThemeData(
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: Color(0x${primaryColor.value.toRadixString(16).padLeft(8, '0')}),
-    secondary: Color(0x${secondaryColor.value.toRadixString(16).padLeft(8, '0')}),
-    brightness: Brightness.${isDarkMode ? 'dark' : 'light'},
-  ),
+  colorScheme: colorScheme,
   useMaterial3: true,
   brightness: Brightness.${isDarkMode ? 'dark' : 'light'},
 )
@@ -261,7 +253,7 @@ ThemeData(
                       ),
                       const SizedBox(height: 16),
 
-                      // Gombok
+                      // Gombok (elsődleges és másodlagos)
                       Wrap(
                         spacing: 8,
                         runSpacing: 8,
@@ -273,6 +265,14 @@ ThemeData(
                           FilledButton(
                             onPressed: () {},
                             child: const Text('Filled gomb'),
+                          ),
+                          FilledButton.tonal(
+                            onPressed: () {},
+                            style: FilledButton.styleFrom(
+                              backgroundColor: theme.colorScheme.secondary,
+                              foregroundColor: theme.colorScheme.onSecondary,
+                            ),
+                            child: const Text('Másodlagos'),
                           ),
                           OutlinedButton(
                             onPressed: () {},
@@ -286,19 +286,25 @@ ThemeData(
                       ),
                       const SizedBox(height: 16),
 
-                      // FAB
-                      Row(
+                      // FAB (elsődleges és másodlagos)
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
                         children: [
                           FloatingActionButton.small(
                             onPressed: () {},
                             child: const Icon(Icons.add),
                           ),
-                          const SizedBox(width: 8),
                           FloatingActionButton(
                             onPressed: () {},
                             child: const Icon(Icons.edit),
                           ),
-                          const SizedBox(width: 8),
+                          FloatingActionButton(
+                            onPressed: () {},
+                            backgroundColor: theme.colorScheme.secondary,
+                            foregroundColor: theme.colorScheme.onSecondary,
+                            child: const Icon(Icons.star),
+                          ),
                           FloatingActionButton.extended(
                             onPressed: () {},
                             icon: const Icon(Icons.save),
@@ -308,25 +314,49 @@ ThemeData(
                       ),
                       const SizedBox(height: 16),
 
-                      // Card példa
-                      Card(
-                        elevation: 4,
-                        child: ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: theme.colorScheme.primary,
-                            child: const Icon(Icons.person, color: Colors.white),
+                      // Card példák (elsődleges és másodlagos)
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Card(
+                              elevation: 4,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: theme.colorScheme.primary,
+                                  child: const Icon(Icons.person, color: Colors.white),
+                                ),
+                                title: const Text('Elsődleges'),
+                                subtitle: const Text('Primary card'),
+                              ),
+                            ),
                           ),
-                          title: const Text('Card példa'),
-                          subtitle: const Text('Ez egy példa card komponens'),
-                          trailing: IconButton(
-                            icon: const Icon(Icons.more_vert),
-                            onPressed: () {},
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Card(
+                              elevation: 4,
+                              color: theme.colorScheme.secondaryContainer,
+                              child: ListTile(
+                                leading: CircleAvatar(
+                                  backgroundColor: theme.colorScheme.secondary,
+                                  foregroundColor: theme.colorScheme.onSecondary,
+                                  child: const Icon(Icons.star),
+                                ),
+                                title: Text(
+                                  'Másodlagos',
+                                  style: TextStyle(color: theme.colorScheme.onSecondaryContainer),
+                                ),
+                                subtitle: Text(
+                                  'Secondary card',
+                                  style: TextStyle(color: theme.colorScheme.onSecondaryContainer.withOpacity(0.7)),
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                       const SizedBox(height: 16),
 
-                      // Chip-ek
+                      // Chip-ek (másodlagos színnel)
                       Wrap(
                         spacing: 8,
                         children: [
@@ -343,6 +373,13 @@ ThemeData(
                             label: const Text('Filter Chip'),
                             selected: true,
                             onSelected: (value) {},
+                          ),
+                          Chip(
+                            backgroundColor: theme.colorScheme.secondary,
+                            label: Text(
+                              'Másodlagos szín',
+                              style: TextStyle(color: theme.colorScheme.onSecondary),
+                            ),
                           ),
                         ],
                       ),
@@ -418,6 +455,208 @@ ThemeData(
           ),
         ),
       ),
+    );
+  }
+}
+
+// Színválasztó Dialog HSL csúszkákkal
+class ColorPickerDialog extends StatefulWidget {
+  final Color initialColor;
+  final String title;
+  final ValueChanged<Color> onColorSelected;
+
+  const ColorPickerDialog({
+    super.key,
+    required this.initialColor,
+    required this.title,
+    required this.onColorSelected,
+  });
+
+  @override
+  State<ColorPickerDialog> createState() => _ColorPickerDialogState();
+}
+
+class _ColorPickerDialogState extends State<ColorPickerDialog> {
+  late Color _currentColor;
+  int _pickerType = 0; // 0: Material, 1: HSL csúszkák
+
+  @override
+  void initState() {
+    super.initState();
+    _currentColor = widget.initialColor;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text(widget.title),
+      content: SizedBox(
+        width: double.maxFinite,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Előnézet
+              Container(
+                height: 60,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: _currentColor,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey, width: 2),
+                ),
+                child: Center(
+                  child: Text(
+                    '#${_currentColor.value.toRadixString(16).padLeft(8, '0').substring(2).toUpperCase()}',
+                    style: TextStyle(
+                      color: _currentColor.computeLuminance() > 0.5
+                          ? Colors.black
+                          : Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+
+              // Választó típus
+              SegmentedButton<int>(
+                segments: const [
+                  ButtonSegment(
+                    value: 0,
+                    label: Text('Material'),
+                    icon: Icon(Icons.palette),
+                  ),
+                  ButtonSegment(
+                    value: 1,
+                    label: Text('HSL'),
+                    icon: Icon(Icons.tune),
+                  ),
+                ],
+                selected: {_pickerType},
+                onSelectionChanged: (Set<int> newSelection) {
+                  setState(() {
+                    _pickerType = newSelection.first;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              // Színválasztó
+              if (_pickerType == 0)
+                ColorPicker(
+                  pickerColor: _currentColor,
+                  onColorChanged: (Color color) {
+                    setState(() => _currentColor = color);
+                  },
+                  pickerAreaHeightPercent: 0.7,
+                  displayThumbColor: true,
+                  enableAlpha: false,
+                )
+              else
+                _buildHSLSliders(),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Mégse'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            widget.onColorSelected(_currentColor);
+            Navigator.of(context).pop();
+          },
+          child: const Text('Kiválaszt'),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHSLSliders() {
+    final hsl = HSLColor.fromColor(_currentColor);
+
+    return Column(
+      children: [
+        // Hue (Színárnyalat)
+        _buildSlider(
+          label: 'Színárnyalat (H)',
+          value: hsl.hue,
+          max: 360,
+          divisions: 360,
+          color: Colors.red,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsl.withHue(value).toColor();
+            });
+          },
+          valueLabel: '${hsl.hue.round()}°',
+        ),
+        const SizedBox(height: 8),
+
+        // Saturation (Telítettség)
+        _buildSlider(
+          label: 'Telítettség (S)',
+          value: hsl.saturation * 100,
+          max: 100,
+          divisions: 100,
+          color: Colors.green,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsl.withSaturation(value / 100).toColor();
+            });
+          },
+          valueLabel: '${(hsl.saturation * 100).round()}%',
+        ),
+        const SizedBox(height: 8),
+
+        // Lightness (Világosság)
+        _buildSlider(
+          label: 'Világosság (L)',
+          value: hsl.lightness * 100,
+          max: 100,
+          divisions: 100,
+          color: Colors.blue,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsl.withLightness(value / 100).toColor();
+            });
+          },
+          valueLabel: '${(hsl.lightness * 100).round()}%',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSlider({
+    required String label,
+    required double value,
+    required double max,
+    required int divisions,
+    required Color color,
+    required ValueChanged<double> onChanged,
+    required String valueLabel,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontWeight: FontWeight.bold)),
+            Text(valueLabel),
+          ],
+        ),
+        Slider(
+          value: value,
+          max: max,
+          divisions: divisions,
+          label: valueLabel,
+          onChanged: onChanged,
+        ),
+      ],
     );
   }
 }
