@@ -478,7 +478,7 @@ class ColorPickerDialog extends StatefulWidget {
 
 class _ColorPickerDialogState extends State<ColorPickerDialog> {
   late Color _currentColor;
-  int _pickerType = 0; // 0: Material, 1: HSL csúszkák
+  int _pickerType = 0; // 0: Material, 1: HSL csúszkák, 2: HSB csúszkák
 
   @override
   void initState() {
@@ -532,6 +532,11 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
                     label: Text('HSL'),
                     icon: Icon(Icons.tune),
                   ),
+                  ButtonSegment(
+                    value: 2,
+                    label: Text('HSB'),
+                    icon: Icon(Icons.gradient),
+                  ),
                 ],
                 selected: {_pickerType},
                 onSelectionChanged: (Set<int> newSelection) {
@@ -553,8 +558,10 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
                   displayThumbColor: true,
                   enableAlpha: false,
                 )
+              else if (_pickerType == 1)
+                _buildHSLSliders()
               else
-                _buildHSLSliders(),
+                _buildHSBSliders(),
             ],
           ),
         ),
@@ -625,6 +632,61 @@ class _ColorPickerDialogState extends State<ColorPickerDialog> {
             });
           },
           valueLabel: '${(hsl.lightness * 100).round()}%',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHSBSliders() {
+    final hsv = HSVColor.fromColor(_currentColor);
+
+    return Column(
+      children: [
+        // Hue (Színárnyalat)
+        _buildSlider(
+          label: 'Színárnyalat (H)',
+          value: hsv.hue,
+          max: 360,
+          divisions: 360,
+          color: Colors.red,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsv.withHue(value).toColor();
+            });
+          },
+          valueLabel: '${hsv.hue.round()}°',
+        ),
+        const SizedBox(height: 8),
+
+        // Saturation (Telítettség)
+        _buildSlider(
+          label: 'Telítettség (S)',
+          value: hsv.saturation * 100,
+          max: 100,
+          divisions: 100,
+          color: Colors.green,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsv.withSaturation(value / 100).toColor();
+            });
+          },
+          valueLabel: '${(hsv.saturation * 100).round()}%',
+        ),
+        const SizedBox(height: 8),
+
+        // Brightness (Fényerő)
+        _buildSlider(
+          label: 'Fényerő (B)',
+          value: hsv.value * 100,
+          max: 100,
+          divisions: 100,
+          color: Colors.amber,
+          onChanged: (value) {
+            setState(() {
+              _currentColor = hsv.withValue(value / 100).toColor();
+            });
+          },
+          valueLabel: '${(hsv.value * 100).round()}%',
         ),
       ],
     );
